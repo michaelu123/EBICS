@@ -2,6 +2,7 @@ import csv
 import argparse
 import random
 import copy
+import datetime
 from string import digits, ascii_uppercase
 from xml.dom.minidom import *
 from decimal import Decimal,getcontext
@@ -172,6 +173,17 @@ def fillin(entries):
         pmtInf.childNodes.append(copy.deepcopy(nl1))
     pmtInf.childNodes[len(pmtInf.childNodes) - 1] = copy.deepcopy(nl2)
 
+def fillinDates(xmlt):
+    creDtTm = xmlt.getElementsByTagName("CreDtTm")
+    now = datetime.datetime.now()
+    d = now.isoformat(timespec="milliseconds") + "Z"
+    creDtTm[0].childNodes[0] = xmlt.createTextNode(d)
+    reqdColltnDt = xmlt.getElementsByTagName("ReqdColltnDt")
+    today = datetime.date.today()
+    d = today.isoformat()
+    reqdColltnDt[0].childNodes[0] = xmlt.createTextNode(d)
+
+
 parser = argparse.ArgumentParser(description="Erzeuge EBICS-Datei aus csv-Datei")
 parser.add_argument("-i", "--input", dest="input", help="Input-Datei im CSV-Format")
 parser.add_argument("-o", "--output", dest="output", default="ebics.xml", help="Output-Datei im EBICS-Format")
@@ -183,8 +195,11 @@ entries = parseCSV(inputFile)
 summe = addBetraege(entries)
 xmlt = parseString(xmls)
 fillinIDs(xmlt)
+fillinDates(xmlt)
 fillinSumme(xmlt, summe, len(entries))
 fillin(entries)
 pr = xmlt.toxml()
+with open(outputFile, "w") as o:
+    o.write(pr)
 print(pr)
 
