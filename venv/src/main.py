@@ -95,13 +95,27 @@ xmls = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </Document>
 """
 
-fieldnames = ["Name", "IBAN", "Betrag"] # adapt to field names in csv file
+fieldnames = ["Vorname", "Name", "Lastschrift: Name des Kontoinhabers", "Lastschrift: IBAN-Kontonummer", "Betrag", "Verwendungszweck"] # adapt to field names in csv file
 charset = digits + ascii_uppercase
-name = fieldnames[0]
-iban = fieldnames[1]
-betrag = fieldnames[2]
+vorname = fieldnames[0]
+name = fieldnames[1]
+ktoinh = fieldnames[2]
+iban = fieldnames[3]
+betrag = fieldnames[4]
+zweck = fieldnames[5]
+
 decCtx = getcontext()
 decCtx.prec = 7 # 5.2 digits, max=99999.99
+sep = ','
+
+class excel1(csv.Dialect):
+    """Describe the usual properties of Excel-generated CSV files."""
+    delimiter = ','
+    quotechar = '"'
+    doublequote = True
+    skipinitialspace = False
+    lineterminator = '\n'
+    quoting = csv.QUOTE_MINIMAL
 
 class excel2(csv.Dialect):
     """Describe the usual properties of Excel-generated CSV files."""
@@ -115,14 +129,28 @@ class excel2(csv.Dialect):
 
 def parseCSV(inputPath):
     vals = []
+    csv.register_dialect("excel1", excel1)
     csv.register_dialect("excel2", excel2)
-    with open(inputPath, 'r', newline='') as csvfile:
-        reader = csv.DictReader(csvfile, fieldnames, dialect="excel2")
+    with open(inputPath, 'r', newline='', encoding="utf8") as csvfile:
+        reader = csv.DictReader(csvfile, None, dialect="excel1" if sep == ',' else "excel2")
         for row in reader:
-            if row[betrag] == betrag:
+            if not iban in row:
                 continue
+            if row[iban] == "" or len(row[iban]) < 22:
+                continue
+            if not betrag in row:
+                if stdbetrag == "":
+                    raise ValueError("Standard-Betrag nicht definiert (mit -b)")
+                row[betrag] = stdbetrag
             row[betrag] = Decimal(row[betrag].replace(',', '.'))  # 3,14 -> 3.14
-            vals.append(row)
+            inh = row[ktoinh]
+            if len(inh) < 5 or inh.startswith("dto") or inh.startswith("ditto"):
+                row[ktoinh] = row[vorname] + " " + row[name]
+            if not zweck in row:
+                if stdzweck == "":
+                    raise ValueError("Standard-Verwendungszweck nicht definiert (mit -z)")
+                row[zweck] = stdzweck
+            vals.append({x:row[x] for x in fieldnames})
     return vals
 
 def addBetraege(entries):
@@ -164,14 +192,16 @@ def fillin(entries):
         mndtId = newtx.getElementsByTagName("MndtId")
         mndtId[0].childNodes[0] = xmlt.createTextNode("xxx")  # ???
         nm = newtx.getElementsByTagName("Nm")
-        nm[0].childNodes[0] = xmlt.createTextNode(entry[name])
+        nm[0].childNodes[0] = xmlt.createTextNode(entry[ktoinh])
         ibn = newtx.getElementsByTagName("IBAN")
         ibn[0].childNodes[0] = xmlt.createTextNode(entry[iban])
         amt = newtx.getElementsByTagName("InstdAmt")
         amt[0].childNodes[0] = xmlt.createTextNode(str(entry[betrag]))
+        ustrd = newtx.getElementsByTagName("Ustrd")
+        ustrd[0].childNodes[0] = xmlt.createTextNode(str(entry[zweck]))
         pmtInf.childNodes.append(newtx)
-        pmtInf.childNodes.append(copy.deepcopy(nl1))
-    pmtInf.childNodes[len(pmtInf.childNodes) - 1] = copy.deepcopy(nl2)
+        pmtInf.childNodes.append(copy.copy(nl1))
+    pmtInf.childNodes[len(pmtInf.childNodes) - 1] = copy.copy(nl2)
 
 def fillinDates(xmlt):
     creDtTm = xmlt.getElementsByTagName("CreDtTm")
@@ -187,9 +217,15 @@ def fillinDates(xmlt):
 parser = argparse.ArgumentParser(description="Erzeuge EBICS-Datei aus csv-Datei")
 parser.add_argument("-i", "--input", dest="input", help="Input-Datei im CSV-Format")
 parser.add_argument("-o", "--output", dest="output", default="ebics.xml", help="Output-Datei im EBICS-Format")
+parser.add_argument("-s", "--separator", dest="sep", default=",", help="Trenner in CSV-Datei: , oder ;")
+parser.add_argument("-b", "--betrag", dest="stdbetrag", default="", help="Geldbetrag falls nicht in Tabelle enthalten")
+parser.add_argument("-z", "--zweck", dest="zweck", default="", help="Verwendungszweck, falls nicht in Tabelle enthalten")
 args = parser.parse_args()
 inputFile = args.input
 outputFile = args.output
+stdbetrag = args.stdbetrag
+sep = args.sep
+stdzweck = args.zweck
 
 entries = parseCSV(inputFile)
 summe = addBetraege(entries)
