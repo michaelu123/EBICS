@@ -1,3 +1,4 @@
+import sys
 import csv
 import argparse
 import random
@@ -95,7 +96,7 @@ xmls = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </Document>
 """
 
-fieldnames = ["Vorname", "Name", "Lastschrift: Name des Kontoinhabers", "Lastschrift: IBAN-Kontonummer", "Betrag", "Verwendungszweck"] # adapt to field names in csv file
+fieldnames = ["Vorname", "Name", "Lastschrift: Name des Kontoinhabers", "Lastschrift: IBAN-Kontonummer", "Betrag", "Zweck"] # adapt to field names in csv file
 charset = digits + ascii_uppercase
 vorname = fieldnames[0]
 name = fieldnames[1]
@@ -216,11 +217,15 @@ def fillinDates(xmlt):
 
 parser = argparse.ArgumentParser(description="Erzeuge EBICS-Datei aus csv-Datei")
 parser.add_argument("-i", "--input", dest="input", help="Input-Datei im CSV-Format")
+parser.add_argument("-e", "--ebics", dest="ebics", help="EBICS-Template-Datei im XML-Format")
 parser.add_argument("-o", "--output", dest="output", default="ebics.xml", help="Output-Datei im EBICS-Format")
 parser.add_argument("-s", "--separator", dest="sep", default=",", help="Trenner in CSV-Datei: , oder ;")
-parser.add_argument("-b", "--betrag", dest="stdbetrag", default="", help="Geldbetrag falls nicht in Tabelle enthalten")
-parser.add_argument("-z", "--zweck", dest="zweck", default="", help="Verwendungszweck, falls nicht in Tabelle enthalten")
+parser.add_argument("-b", "--betrag", dest="stdbetrag", default="", help="Geldbetrag, falls nicht in Tabelle enthalten (Betrag)")
+parser.add_argument("-z", "--zweck", dest="zweck", default="", help="Verwendungszweck, falls nicht in Tabelle enthalten (Zweck)")
 args = parser.parse_args()
+if len(sys.argv) <= 1:
+    parser.print_usage()
+    sys.exit()
 inputFile = args.input
 outputFile = args.output
 stdbetrag = args.stdbetrag
@@ -229,6 +234,9 @@ stdzweck = args.zweck
 
 entries = parseCSV(inputFile)
 summe = addBetraege(entries)
+if args.ebics != "":
+    with open(args.ebics, "r") as f:
+        xmls = f.read()
 xmlt = parseString(xmls)
 fillinIDs(xmlt)
 fillinDates(xmlt)
