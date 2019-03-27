@@ -105,9 +105,8 @@ zweck = fieldnames[5]
 
 decCtx = getcontext()
 decCtx.prec = 7 # 5.2 digits, max=99999.99
-sep = ','
 
-class excel1(csv.Dialect):
+class Excel1(csv.Dialect):
     """Describe the usual properties of Excel-generated CSV files."""
     delimiter = ','
     quotechar = '"'
@@ -116,7 +115,7 @@ class excel1(csv.Dialect):
     lineterminator = '\n'
     quoting = csv.QUOTE_MINIMAL
 
-class excel2(csv.Dialect):
+class Excel2(csv.Dialect):
     """Describe the usual properties of Excel-generated CSV files."""
     delimiter = ';'
     quotechar = '"'
@@ -152,8 +151,8 @@ class Ebics:
 
     def parseCSV(self, inputPath):
         vals = []
-        csv.register_dialect("excel1", excel1)
-        csv.register_dialect("excel2", excel2)
+        csv.register_dialect("excel1", Excel1)
+        csv.register_dialect("excel2", Excel2)
         with open(inputPath, 'r', newline='', encoding="utf8") as csvfile:
             reader = csv.DictReader(csvfile, None, dialect="excel1" if self.sep == ',' else "excel2")
             for row in reader:
@@ -196,6 +195,7 @@ class Ebics:
         pmtInf = self.xmlt.getElementsByTagName("PmtInf")[0]
         drctDbtTxInf = pmtInf.getElementsByTagName("DrctDbtTxInf")[0]
         x = pmtInf.childNodes.index(drctDbtTxInf)
+        drctDbtTxInf = copy.deepcopy(drctDbtTxInf)
         nl1 = pmtInf.childNodes[x - 1]
         nl2 = pmtInf.childNodes[x + 1]
         pmtInf.childNodes = pmtInf.childNodes[0:x]
@@ -239,11 +239,11 @@ class Ebics:
         for inp in self.inputFiles.split(','):
             entries.extend(self.parseCSV(inp))
         summe = addBetraege(entries)
-        global xmls
+        template = xmls
         if self.ebics != None and self.ebics != "":
             with open(self.ebics, "r") as f:
-                xmls = f.read()
-        self.xmlt = parseString(xmls)
+                template = f.read()
+        self.xmlt = parseString(template)
         self.fillinIDs()
         self.fillinDates()
         self.fillinSumme(summe, len(entries))
