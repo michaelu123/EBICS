@@ -15,7 +15,7 @@ xmls = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
             <NbOfTxs>1</NbOfTxs>
             <CtrlSum>0.01</CtrlSum>
             <InitgPty>
-                <Nm>ALLG. DEUTSCHER FAHRRAD-CLUB KREISVERBAND MÃœNCH. ADFC</Nm>
+                <Nm>ALLG. DEUTSCHER FAHRRAD-CLUB KREISVERBAND MÜNCH. ADFC</Nm>
             </InitgPty>
         </GrpHdr>
         <PmtInf>
@@ -34,7 +34,7 @@ xmls = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
             </PmtTpInf>
             <ReqdColltnDt>2019-03-29</ReqdColltnDt>
             <Cdtr>
-                <Nm>ALLG. DEUTSCHER FAHRRAD-CLUB KREISVERBAND MÃœNCH. ADFC</Nm>
+                <Nm>ALLG. DEUTSCHER FAHRRAD-CLUB KREISVERBAND MÜNCH. ADFC</Nm>
             </Cdtr>
             <CdtrAcct>
                 <Id>
@@ -261,7 +261,9 @@ class Ebics:
         self.fillinDates()
         self.fillinSumme(summe, len(entries))
         self.fillin(entries)
-        pr = self.xmlt.toxml()
-        with open(self.outputFile, "w", encoding="utf-8") as o:
+        # self.xmlt.standalone = True or "yes" has no effect
+        pr = self.xmlt.toxml(encoding="utf-8")
+        pr = pr[0:36] + b' standalone="yes"' + pr[36:]  # minidom has problems with standalone param
+        with open(self.outputFile, "wb") as o:
             o.write(pr)
         return pr
