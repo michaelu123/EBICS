@@ -16,6 +16,8 @@ if len(sys.argv) <= 1:
     sys.exit()
 
 eb = ebics.Ebics(args.input, args.output, args.stdbetrag, args.sep, args.zweck, args.mandat, args.ebics)
-
-pr = eb.createEbicsXml()
-print(pr)
+if eb is None:
+    print("Keine noch nicht bezahlten Einzüge gefunden")
+else:
+    pr = eb.createEbicsXml()
+    print(pr)

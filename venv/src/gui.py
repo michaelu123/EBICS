@@ -111,8 +111,17 @@ class MyApp(Frame):
                 self.mandatLE.get(),
                 self.templateBE.get())
         try:
-            eb.createEbicsXml()
-            showinfo("Erfolg", "Ausgabe in Datei " + self.outputLE.get() + " erzeugt")
+            res = eb.createEbicsXml()
+            stats = eb.getStatistics()
+            msg = f"Anzahl Abbuchungsaufträge: {stats[0]}\nSchon bezahlt: {stats[1]}\nNoch abzubuchen: {stats[2]}"
+            if res is None:
+                showinfo("Nichts", msg)
+                # showinfo("Nichts",
+                #        "Anzahl Abbuchungsaufträge: {}".format(stats[0]),
+                #        "Schon bezahlt: {}".format(stats[1]),
+                #        "Noch abzubuchen: {}".format(stats[2]))
+            else:
+                showinfo("Erfolg", msg + f"\nAusgabe in Datei {self.outputLE.get()} erzeugt")
         except Exception as e:
             showerror("Fehler", str(e))
 

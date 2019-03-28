@@ -149,17 +149,37 @@ class Ebics:
     decCtx = getcontext()
     decCtx.prec = 7 # 5.2 digits, max=99999.99
 
+    def __init__(self, inputfilesA, outputfileA, stdbetragA, sepA, stdzweckA, mandatA, ebicsA):
+        self.inputFiles = inputfilesA
+        self.outputFile = outputfileA
+        self.stdbetrag = stdbetragA
+        self.sep = sepA
+        self.stdzweck = stdzweckA
+        self.mandat = mandatA
+        self.ebics = ebicsA
+        self.nr_einzug = 0
+        self.nr_bezahlt = 0
+        self.nr_enthalten = 0
+
+    def getStatistics(self):
+        return ( self.nr_einzug, self.nr_bezahlt, self.nr_enthalten)
+
     def parseCSV(self, inputPath):
         vals = []
         csv.register_dialect("excel1", Excel1)
         csv.register_dialect("excel2", Excel2)
-        with open(inputPath, 'r', newline='', encoding="utf8") as csvfile:
+        with open(inputPath, 'r', newline='', encoding="utf-8") as csvfile:
             reader = csv.DictReader(csvfile, None, dialect="excel1" if self.sep == ',' else "excel2")
             for row in reader:
                 if not iban in row:
                     continue
                 if row[iban] == "" or len(row[iban]) < 22:
                     continue
+                self.nr_einzug += 1
+                if "bezahlt" in list(row.values()):
+                    self.nr_bezahlt += 1
+                    continue
+                self.nr_enthalten += 1
                 if not betrag in row:
                     if self.stdbetrag == "":
                         raise ValueError("Standard-Betrag nicht definiert (mit -b)")
@@ -225,23 +245,16 @@ class Ebics:
         d = day2.isoformat()
         reqdColltnDt[0].childNodes[0] = self.xmlt.createTextNode(d)
 
-    def __init__(self, inputfilesA, outputfileA, stdbetragA, sepA, stdzweckA, mandatA, ebicsA):
-        self.inputFiles = inputfilesA
-        self.outputFile = outputfileA
-        self.stdbetrag = stdbetragA
-        self.sep = sepA
-        self.stdzweck = stdzweckA
-        self.mandat = mandatA
-        self.ebics = ebicsA
-
     def createEbicsXml(self):
         entries = []
         for inp in self.inputFiles.split(','):
             entries.extend(self.parseCSV(inp))
+        if len(entries) == 0:
+            return None
         summe = addBetraege(entries)
         template = xmls
         if self.ebics != None and self.ebics != "":
-            with open(self.ebics, "r") as f:
+            with open(self.ebics, "r", encoding="utf-8") as f:
                 template = f.read()
         self.xmlt = parseString(template)
         self.fillinIDs()
@@ -249,6 +262,6 @@ class Ebics:
         self.fillinSumme(summe, len(entries))
         self.fillin(entries)
         pr = self.xmlt.toxml()
-        with open(self.outputFile, "w") as o:
+        with open(self.outputFile, "w", encoding="utf-8") as o:
             o.write(pr)
         return pr
