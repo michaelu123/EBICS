@@ -103,6 +103,15 @@ class MyApp(Frame):
         self.templateBE.set(x)
 
     def starten(self):
+        if self.inputFilesBE.get() == "":
+            showerror("Fehler", "keine Eingabedatei")
+            return
+        if self.outputLE.get() == "":
+            showerror("Fehler", "keine Ausgabedatei")
+            return
+        if self.zweckLE.get() == "":
+            showerror("Fehler", "keine Ausgabedatei")
+            return
         eb = Ebics(self.inputFilesBE.get(),
                 self.outputLE.get(),
                 self.betragLE.get(),
